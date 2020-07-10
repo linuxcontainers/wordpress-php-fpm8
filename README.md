@@ -8,7 +8,7 @@
 [![PHP Version](https://img.shields.io/badge/0version-v7.4.8-green.svg?style=for-the-badge)](https://php.org/)
 [![Wordpress Version](https://img.shields.io/badge/Wordpress%20version-v5.4.2-green.svg?style=for-the-badge)](https://wordpress.org/)
 
-This Docker image [(linuxcontainers/wordpress-php-fpm-alpine)](https://hub.docker.com/r/linuxcontainers/wordpress-php-fpm-alpine/) is based on the Wordpress 5.4.2.
+This Docker image [(linuxcontainers/wordpress-php-fpm)](https://hub.docker.com/r/linuxcontainers/wordpress-php-fpm/) is based on the Wordpress 5.4.2.
 
 ----
 
