@@ -1,4 +1,4 @@
-FROM php:7.4.6-fpm-alpine
+FROM php:7.4.8-fpm-alpine
 
 # persistent dependencies
 RUN apk add --no-cache \
@@ -34,7 +34,7 @@ RUN set -ex; \
 		zip \
 	; \
 	pecl install imagick-3.4.4; \
-	pecl install redis-5.2.2; \
+	pecl install redis-5.3.1; \
 	docker-php-ext-enable imagick; \
 	docker-php-ext-enable redis; \
 	\
@@ -73,8 +73,8 @@ RUN { \
 
 VOLUME /var/www/html
 
-ENV WORDPRESS_VERSION 5.4.1
-ENV WORDPRESS_SHA1 9800c231828eb5cd76ba0b8aa6c1a74dfca2daff
+ENV WORDPRESS_VERSION 5.4.2
+ENV WORDPRESS_SHA1 e5631f812232fbd45d3431783d3db2e0d5670d2d
 
 RUN set -ex; \
 	curl -o wordpress.tar.gz -fSL "https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz"; \
