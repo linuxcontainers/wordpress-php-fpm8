@@ -1,4 +1,4 @@
-# Wordpress PHP-FPM with Extensions in Alpine Linux 
+# Wordpress PHP-FPM with Extensions 
 
 [![Docker Automated build](https://img.shields.io/docker/automated/linuxcontainers/wordpress-php-fpm.svg?style=for-the-badge&logo=docker)](https://hub.docker.com/r/linuxcontainers/wordpress-php-fpm/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/linuxcontainers/wordpress-php-fpm.svg?style=for-the-badge&logo=docker)](https://hub.docker.com/r/linuxcontainers/wordpress-php-fpm/)
