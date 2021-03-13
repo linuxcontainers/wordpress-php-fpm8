@@ -1,14 +1,7 @@
-#
-# NOTE: THIS DOCKERFILE IS GENERATED VIA "apply-templates.sh"
-#
-# PLEASE DO NOT EDIT IT DIRECTLY.
-#
-
 FROM php:8.0-fpm-alpine
 
 # persistent dependencies
-RUN set -eux; \
-	apk add --no-cache \
+RUN apk add --no-cache \
 # in theory, docker-entrypoint.sh is POSIX-compliant, but priority is a working, consistent image
 		bash \
 # BusyBox sed is not sufficient for some of our sed expressions
@@ -16,8 +9,14 @@ RUN set -eux; \
 # Ghostscript is required for rendering PDF previews
 		ghostscript \
 # Alpine package for "imagemagick" contains ~120 .so files, see: https://github.com/docker-library/wordpress/pull/497
-		imagemagick \
-	;
+#		imagemagick \
+# For install ffmpeg
+		ffmpeg
+
+# fix work iconv library with alpine
+# Huge thanks to chodingsana!
+RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv
+ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
 # install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
 RUN set -ex; \
@@ -25,25 +24,30 @@ RUN set -ex; \
 	apk add --no-cache --virtual .build-deps \
 		$PHPIZE_DEPS \
 		freetype-dev \
+#		imagemagick-dev \
 		libjpeg-turbo-dev \
 		libpng-dev \
 		libzip-dev \
+		# icu-dev is required for php intl extension
+		icu-dev \
 	; \
 	\
-	docker-php-ext-configure gd \
-		--with-freetype \
-		--with-jpeg \
-	; \
+	docker-php-ext-configure gd --with-freetype --with-jpeg; \
+	docker-php-ext-configure intl; \
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
 		exif \
 		gd \
 		mysqli \
-		opcache \
 		zip \
+		pdo \
+		pdo_mysql \
+		intl \
 	; \
-        pecl install redis-5.3.3; \
-        docker-php-ext-enable redis; \
+#	pecl install imagick-3.4.4 redis apcu; \
+#	docker-php-ext-enable imagick redis apcu; \
+	pecl install redis apcu; \
+	docker-php-ext-enable redis apcu; \
 	\
 	runDeps="$( \
 		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
@@ -51,8 +55,8 @@ RUN set -ex; \
 			| sort -u \
 			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
 	)"; \
-	apk add --no-network --virtual .wordpress-phpexts-rundeps $runDeps; \
-	apk del --no-network .build-deps
+	apk add --virtual .wordpress-phpexts-rundeps $runDeps; \
+	apk del .build-deps
 
 # set recommended PHP.ini settings
 # see https://secure.php.net/manual/en/opcache.installation.php
@@ -79,49 +83,3 @@ RUN { \
 		echo 'ignore_repeated_source = Off'; \
 		echo 'html_errors = Off'; \
 	} > /usr/local/etc/php/conf.d/error-logging.ini
-
-RUN set -eux; \
-	version='5.6.1'; \
-	sha1='19ec00acb177da27533edf5500f911f9d97c047a'; \
-	\
-	curl -o wordpress.tar.gz -fL "https://wordpress.org/wordpress-$version.tar.gz"; \
-	echo "$sha1 *wordpress.tar.gz" | sha1sum -c -; \
-	\
-# upstream tarballs include ./wordpress/ so this gives us /usr/src/wordpress
-	tar -xzf wordpress.tar.gz -C /usr/src/; \
-	rm wordpress.tar.gz; \
-	\
-# https://wordpress.org/support/article/htaccess/
-	[ ! -e /usr/src/wordpress/.htaccess ]; \
-	{ \
-		echo '# BEGIN WordPress'; \
-		echo ''; \
-		echo 'RewriteEngine On'; \
-		echo 'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]'; \
-		echo 'RewriteBase /'; \
-		echo 'RewriteRule ^index\.php$ - [L]'; \
-		echo 'RewriteCond %{REQUEST_FILENAME} !-f'; \
-		echo 'RewriteCond %{REQUEST_FILENAME} !-d'; \
-		echo 'RewriteRule . /index.php [L]'; \
-		echo ''; \
-		echo '# END WordPress'; \
-	} > /usr/src/wordpress/.htaccess; \
-	\
-	chown -R www-data:www-data /usr/src/wordpress; \
-# pre-create wp-content (and single-level children) for folks who want to bind-mount themes, etc so permissions are pre-created properly instead of root:root
-# wp-content/cache: https://github.com/docker-library/wordpress/issues/534#issuecomment-705733507
-	mkdir wp-content; \
-	for dir in /usr/src/wordpress/wp-content/*/ cache; do \
-		dir="$(basename "${dir%/}")"; \
-		mkdir "wp-content/$dir"; \
-	done; \
-	chown -R www-data:www-data wp-content; \
-	chmod -R 777 wp-content
-
-VOLUME /var/www/html
-
-COPY php.ini /usr/local/etc/php/
-COPY docker-entrypoint.sh /usr/local/bin/
-
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["php-fpm"]
